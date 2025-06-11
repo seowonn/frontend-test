@@ -1,62 +1,72 @@
-// 가짜 API 함수 (fetchAgreementDetail 대체용)
+// 예시 fetchAgreementDetail 구현
 async function fetchAgreementDetail(id) {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve({
-                name: "근로계약서",
-                type: "pdf",
-                categoryName: "근로계약",
-                status: "SUCCESS",
-                content: "계약 내용입니다. [AI 분석 결과]"
-            });
-        }, 1000);
+  // 실제 API로 대체 가능
+  return {
+    id: id,
+    status: "SUCCESS",
+    incorrectTexts: [
+      {
+        id: "1",
+        incorrectText: "직원의 수습 기간은 3년으로 한다.",
+        correctedText: "수습 기간은 통상 3개월 이내로 한다.",
+        proofText: "근로기준법 제11조에 따라 수습은 통상 3개월을 넘지 않음.",
+        currentPage: 1,
+        accuracy: 92
+      },
+      {
+        id: "2",
+        incorrectText: "시급은 5000원으로 한다.",
+        correctedText: "최저임금법에 따라 시급은 9620원 이상이어야 함.",
+        proofText: "2023년 최저임금 기준 미달.",
+        currentPage: 2,
+        accuracy: 88
+      }
+    ],
+    url: "example.png",  // 이미지 파일
+    totalPage: 3
+  };
+}
+
+// 카드 생성
+function createReviewCard(data, index, totalPage) {
+  const div = document.createElement("div");
+  div.className = "card";
+
+  div.innerHTML = `
+    <div class="card-title">#${index + 1} ${data.incorrectText}</div>
+    <div class="card-sub">페이지: ${data.currentPage} / ${totalPage} | 정확도: ${data.accuracy}%</div>
+    <div class="card-text"><strong>보완 의견:</strong> ${data.proofText}</div>
+    <div class="card-text"><strong>수정 제안:</strong> ${data.correctedText}</div>
+  `;
+
+  return div;
+}
+
+// 초기 렌더링
+window.onload = async () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const id = urlParams.get("id") || "test";
+
+  const data = await fetchAgreementDetail(id);
+
+  // 이미지 렌더링
+  document.getElementById("doc-image").src = data.url;
+
+  // 카드 렌더링
+  const container = document.getElementById("review-list");
+  container.innerHTML = "";
+
+  if (data.status === "SUCCESS") {
+    data.incorrectTexts.forEach((item, index) => {
+      const card = createReviewCard(item, index, data.totalPage);
+      container.appendChild(card);
     });
-}
+  } else {
+    container.innerHTML = "<p>AI 분석 실패 혹은 진행 중입니다.</p>";
+  }
 
-// URL에서 ID 추출
-const urlParams = new URLSearchParams(window.location.search);
-const id = urlParams.get("id");
-
-// "state" 개념 흉내내기 (예: 링크에서 전달)
-const category = urlParams.get("category");
-const docName = urlParams.get("docName");
-const docType = urlParams.get("docType");
-
-// 상태 저장 변수
-let agreementData = null;
-let intervalId = null;
-
-function updatePageWithData(data) {
-    document.getElementById("loader").style.display = "none";
-    document.getElementById("content").style.display = "block";
-
-    const header = document.getElementById("doc-header");
-    header.textContent = `${category || data.categoryName} > ${docName || data.name}.${docType || data.type}`;
-
-    document.getElementById("review-body").textContent = data.content;
-}
-
-async function loadAgreement() {
-    try {
-        agreementData = await fetchAgreementDetail(id);
-        updatePageWithData(agreementData);
-
-        // polling
-        if (agreementData.status !== "SUCCESS" && agreementData.status !== "AI-FAILED") {
-            intervalId = setInterval(async () => {
-                console.log("⏳ polling...");
-                agreementData = await fetchAgreementDetail(id);
-                updatePageWithData(agreementData);
-                if (agreementData.status === "SUCCESS") clearInterval(intervalId);
-            }, 5000);
-        }
-    } catch (err) {
-        alert("데이터 불러오기 실패");
-        console.error(err);
-    }
-}
-
-// 초기 실행
-window.onload = () => {
-    loadAgreement();
+  document.getElementById("view-report").onclick = () => {
+    alert(`'${id}' 문서의 AI 분석 보고서로 이동합니다.`);
+    // location.href = `/agreements/analysis/${data.id}`; // 실제 라우팅
+  };
 };
